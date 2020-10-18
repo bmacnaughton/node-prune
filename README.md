@@ -1,6 +1,6 @@
 # node-scrub
 
-Remove files not necessary in a production node environment from a directory tree.
+Walk a directory tree and remove files not necessary in a production node environment.
 
 WARNING: this program walks a directory tree and deletes files. Double check what
 you are doing before executing. The program's `--dry-run` option is `true` by default.
@@ -44,7 +44,8 @@ elapsed time 18ms
 
 ## Command-line options
 
-The first argument is the directory to delete.
+The first argument is the root of the directory tree to walk, looking for
+files and directories to delete.
 
 `--dry-run` - [true], use `--dry-run false` to delete files and directories.
 `--details, -d` - [false], show count and size for each match deleted.
