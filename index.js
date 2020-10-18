@@ -4,32 +4,47 @@ const fsp = fs.promises;
 const path = require('path');
 
 const walk = require('action-walk');
-const defaults = require('./defaults');
+const configuration = require('./lib/configuration');
+const defaults = require('./lib/defaults');
 
-const dirs = new Set();
-defaults.directories.forEach(d => dirs.add(d));
-const pkgDirs = new Set();
-defaults.packageDirectories.forEach(p => pkgDirs.add(p));
-const files = new Set();
-defaults.files.forEach(f => files.add(f));
-const extensions = new Set();
-defaults.extensions.forEach(e => extensions.add(e));
+const start = Date.now();
+
+const dirs = new Map();
+defaults.directories.forEach(d => dirs.set(d, {n: 0, bytes: 0}));
+const pkgDirs = new Map();
+defaults.packageDirectories.forEach(p => pkgDirs.set(p, {n: 0, bytes: 0}));
+const files = new Map();
+defaults.files.forEach(f => files.set(f, {n: 0, bytes: 0}));
+const xExtensions = new Set();
+defaults.xExtensions.forEach(x => xExtensions.add(x))
+const extensions = new Map();
+defaults.extensions.forEach(e => extensions.set(e, {n: 0, bytes: 0}));
+
+const details = [dirs, pkgDirs, files, extensions];
 
 /* eslint-disable no-console */
-
-
-const args = process.argv.slice(2);
-if (args.length < 1) {
-  console.log('usage: action-walk directory');
-  process.exit(1);
-}
-const dir = args[0];
 
 const own = makeOwn();
 const options = {dirAction, fileAction, own, stat: 'lstat', dryRun: true};
 
 async function main () {
-  console.log('deleting:');
+  const {values: args, ...config} = await configuration.get();
+  config.errors.forEach(e => console.error(e));
+  config.warnings.forEach(w => console.log(w));
+  config.unknowns.forEach(u => console.log(u));
+
+  if (config.fatals.length) {
+    throw new Error(config.fatals.join(';'));
+  }
+
+  const dir = args.directory;
+  options.dryRun = args.dryRun;
+  options.verbose = args.verbose;
+  options.details = args.details;
+
+  if (options.verbose) {
+    console.log('deleting:');
+  }
   return walk(dir, options)
     .then(() => {
       console.log('------summary------');
@@ -43,7 +58,18 @@ async function main () {
       const pctDirs = pct(own.dirsDeleted, own.dirs);
       const pctFiles = pct(own.filesDeleted, own.files);
       console.log(`percents: bytes ${pctBytes} directories ${pctDirs} files ${pctFiles}`);
-      //console.log(`percent bytes deleted ${(own.bytesDeleted / own.bytes * 100).toFixed(1)}`);
+      console.log(`elapsed time ${(Date.now() - start)}ms`);
+
+      if (options.details) {
+        console.log('------details------');
+        details.forEach(d => {
+          for (const [pattern, stats] of d) {
+            if (stats.n) {
+              console.log(pattern, stats);
+            }
+          }
+        })
+      }
     });
 
 }
@@ -59,12 +85,12 @@ async function dirAction (filepath, ctx) {
     // that was removed. start with the size of this directory.
     const subOwn = makeOwn({
       bytes: ctx.stat.size,
-      dirs: 1,
     });
     subOwn.show = false;
     const subOptions = {
       dirAction,
       fileAction,
+      linkAction,
       own: subOwn,
       stat: 'lstat',
     };
@@ -75,11 +101,25 @@ async function dirAction (filepath, ctx) {
     own.dirsDeleted += subOwn.dirs;
     own.filesDeleted += subOwn.files;
 
+    let details;
+    if (dirs.has(dirent.name)) {
+      details = dirs.get(dirent.name);
+    } else if (pkgDirs.has(dirent.name)) {
+      details = pkgDirs.get(dirent.name);
+    } else {
+      throw new Error('pattern', dirent.name, 'not found in dirs or pkgDirs');
+    }
+
+    details.n += 1;
+    details.bytes += subOwn.bytes;
+
+
+    if (options.verbose) {
+      console.log(`subtree: ${filepath}`, subOwn.bytes);
+    }
 
     if (!options.dryRun) {
       await fsp.rmdir(filepath, {recursive: true});
-    } else {
-      console.log(`subtree: ${filepath}`, subOwn.bytes);
     }
 
     // skip because we've already counted and deleted this
@@ -97,20 +137,44 @@ async function fileAction (filepath, ctx) {
   if (files.has(dirent.name)) {
     own.filesDeleted += 1;
     own.bytesDeleted += stat.size;
-    if (!options.dryRun) {
-      return fsp.unlink(filepath);
-    } else {
+
+    const details = files.get(dirent.name);
+    details.n += 1;
+    details.bytes += stat.size;
+
+    if (options.verbose) {
       console.log(`file: ${dirent.name}:`, stat.size);
     }
-  } else if (extensions.has(path.extname(dirent.name))) {
-    own.filesDeleted += 1;
-    own.bytesDeleted += stat.size;
+
     if (!options.dryRun) {
       return fsp.unlink(filepath);
-    } else {
+    }
+    return;
+  }
+  const ext = path.extname(dirent.name);
+
+  if (!xExtensions.has(ext) && extensions.has(ext)) {
+    own.filesDeleted += 1;
+    own.bytesDeleted += stat.size;
+
+    const details = extensions.get(ext);
+    details.n += 1;
+    details.bytes += stat.size;
+
+    if (options.verbose) {
       console.log(`ext: ${filepath}:`, stat.size);
     }
+
+    if (!options.dryRun) {
+      return fsp.unlink(filepath);
+    }
   }
+}
+
+async function linkAction (filepath, ctx) {
+  const {stat, own} = ctx;
+  own.bytes += stat.size;
+  own.files += 1;
 }
 
 function makeOwn (proto) {

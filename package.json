@@ -1,13 +1,27 @@
 {
-  "name": "node-prune",
+  "name": "node-scrub",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "node-scrub": "index.js"
+  },
+  "engines": {
+    "node": ">=12.10.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "node",
+    "prune",
+    "autoclean",
+    "node_modules",
+    "scrub",
+    "clean",
+    "cruft"
+  ],
+  "author": "Bruce A. MacNaughton",
   "license": "ISC",
   "dependencies": {
     "action-walk": "^2.2.0",
