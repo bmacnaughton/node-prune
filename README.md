@@ -47,10 +47,10 @@ elapsed time 22ms
 The first argument is the root of the directory tree to walk, looking for
 files and directories to delete.
 
-`--dry-run` - [true], use `--dry-run false` to delete files and directories.
-`--details, -d` - [false], show count and size for each match deleted.
-`--verbose` - [false], print every directory and file deleted.
-`--veryVerbose` - [false], print every directory, file, and link traversed + verbose.
+- `--dry-run` - [true], use `--dry-run false` to delete files and directories.
+- `--details, -d` - [false], show count and size for each match deleted.
+- `--verbose` - [false], print every directory and file deleted.
+- `--very-verbose` - [false], print every directory, file, and link traversed + verbose.
 
 ### todos
 
