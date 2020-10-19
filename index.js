@@ -25,7 +25,7 @@ const details = [dirs, pkgDirs, files, extensions];
 /* eslint-disable no-console */
 
 const own = makeOwn();
-const options = {dirAction, fileAction, own, stat: 'lstat', dryRun: true};
+const options = {dirAction, fileAction, linkAction, own, stat: 'lstat', dryRun: true};
 
 async function main () {
   const {values: args, ...config} = await configuration.get();
@@ -39,11 +39,12 @@ async function main () {
 
   const dir = args.directory;
   options.dryRun = args.dryRun;
-  options.verbose = args.verbose;
+  options.verbose = args.verbose || args.veryVerbose;
+  options.veryVerbose = args.veryVerbose;
   options.details = args.details;
 
   if (options.verbose) {
-    console.log('deleting:');
+    console.log('deleting: (subtree, file, and ext)');
   }
   return walk(dir, options)
     .then(() => {
@@ -80,6 +81,10 @@ async function dirAction (filepath, ctx) {
   const {dirent, stat, own, stack} = ctx;
   own.dirs += 1;
 
+  if (options.veryVerbose) {
+    console.log(`d: ${stack.join('/')} ${dirent.name}`);
+  }
+
   if (dirs.has(dirent.name) || (pkgDirs.has(dirent.name) && stack[stack.length - 2] === 'node_modules')) {
     // delete this directory after walking it to get the total size
     // that was removed. start with the size of this directory.
@@ -99,6 +104,7 @@ async function dirAction (filepath, ctx) {
     own.bytesDeleted += subOwn.bytes;
     own.dirs += subOwn.dirs;
     own.dirsDeleted += subOwn.dirs;
+    own.files += subOwn.files;
     own.filesDeleted += subOwn.files;
 
     let details;
@@ -134,6 +140,10 @@ async function fileAction (filepath, ctx) {
   own.bytes += stat.size;
   own.files += 1;
 
+  if (options.veryVerbose) {
+    console.log(`f: ${ctx.stack.join('/')} ${dirent.name}`);
+  }
+
   if (files.has(dirent.name)) {
     own.filesDeleted += 1;
     own.bytesDeleted += stat.size;
@@ -151,6 +161,7 @@ async function fileAction (filepath, ctx) {
     }
     return;
   }
+
   const ext = path.extname(dirent.name);
 
   if (!xExtensions.has(ext) && extensions.has(ext)) {
@@ -175,6 +186,10 @@ async function linkAction (filepath, ctx) {
   const {stat, own} = ctx;
   own.bytes += stat.size;
   own.files += 1;
+
+  if (options.veryVerbose) {
+    console.log(`l: ${ctx.stack.join('/')} ${ctx.dirent.name}`);
+  }
 }
 
 function makeOwn (proto) {

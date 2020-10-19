@@ -22,10 +22,10 @@ like:
 $ node-scrub node_modules
 ------summary------
  (dry-run results)
-total bytes: 65818 directories: 6 files: 10
+total bytes: 65818 directories: 6 files: 26
 deleted bytes: 35412 directories: 0 files: 20
-percents: bytes 53.8 directories 0.0 files 200.0
-elapsed time 8ms
+percents: bytes 53.8 directories 0.0 files 76.9
+elapsed time 11ms
 ```
 
 Note that the option `--dry-run` is by default true and that's a good thing because
@@ -36,10 +36,10 @@ want to delete.
 $ node-scrub .
 ------summary------
  (dry-run results)
-total bytes: 281809 directories: 43 files: 59
-deleted bytes: 41897 directories: 0 files: 22
-percents: bytes 14.9 directories 0.0 files 37.3
-elapsed time 18ms
+total bytes: 329447 directories: 54 files: 89
+deleted bytes: 37157 directories: 0 files: 22
+percents: bytes 11.3 directories 0.0 files 24.7
+elapsed time 22ms
 ```
 
 ## Command-line options
@@ -50,6 +50,7 @@ files and directories to delete.
 `--dry-run` - [true], use `--dry-run false` to delete files and directories.
 `--details, -d` - [false], show count and size for each match deleted.
 `--verbose` - [false], print every directory and file deleted.
+`--veryVerbose` - [false], print every directory, file, and link traversed + verbose.
 
 ### todos
 
